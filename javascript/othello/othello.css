@@ -1,0 +1,42 @@
+
+
+/* 練習14 */
+
+.othello{
+	display: flex;
+	display: -webkit-flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	align-content: space-between;
+	width: 519px;
+	height: 519px;
+	border: solid 4px;
+	background-color: grey;
+}
+
+.square{
+	width: 64px;
+	height: 64px;
+}
+
+.none{
+	background-color: green;
+}
+
+.black{
+    background-color: black;
+    color: white;
+}
+
+.white{
+    background-color: white;
+}
+
+.available{
+    background-color: yellowgreen;
+}
+
+.number{
+	width: 100px;
+	height: 50px;
+}
