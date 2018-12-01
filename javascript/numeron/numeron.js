@@ -12,6 +12,8 @@ var comment;
 var shown;
 var youritem;
 
+var item_random = true;
+
 function setArray() {
     comment = document.getElementById("comment");
     comment.innerHTML = "ここでは操作は全てクリックで行います。ゲーム開始前に、自分のカードの数字の組み合わせを決めてください。";
@@ -119,7 +121,7 @@ function challenge(d) {
         console.log("mylog");
         l.innerHTML += "<p>"+challenger+"    "+c[0]+"eat "+c[1]+"bite</p>";
         if (c[0]==4) {
-            finish(0);
+            setTimeout(function(){finish(0)}, 500);
         }
         var yourpos = new Array();
         for (var i=0; i<yourpossibility.length; i++) {
@@ -167,12 +169,45 @@ function check(a, answer) {
 
 function cpchallenge() {
     console.log(possibility.length);
-    var p = possibility[Math.floor(Math.random()*possibility.length)];
+    var p;
+    if (possibility.length < 1000) {
+        console.log("final stage!!!")
+        var information_record = 0;
+        var information_max_index = 0;
+        for (var i=0; i<possibility.length; i++) {
+            var eat_and_bite = Array(length);
+            for (var j=0; j<length; j++) {
+                eat_and_bite[j] = Array(length);
+                eat_and_bite[j].fill(0);
+            }
+            for (var j=i+1; j<possibility.length; j++) {
+                var c = check(i, j);
+                eat_and_bite[c[0]][c[1]]++;
+            }
+            
+            var information = 0;
+            for (var eat=0; eat<length; eat++) {
+                for (var bite=0; bite<length; bite++) {
+                    if (eat_and_bite[eat][bite] > 0) {
+                        var p_eb = eat_and_bite[eat][bite]/possibility.length;
+                        information -= p_eb*Math.log2(p_eb);
+                    }
+                }
+            }
+            if (information > information_record) {
+                information_record = information;
+                information_max_index = i;
+            }
+        }
+        p = possibility[information_max_index];
+    } else {
+        p = possibility[Math.floor(Math.random()*possibility.length)];
+    }
     var c = check(p, mine);
     var l = document.getElementById("yourlog");
     l.innerHTML += "<p>"+p+"    "+c[0]+"eat "+c[1]+"bite</p>";
     if (c[0]==4) {
-        finish(1);
+        setTimeout(function(){finish(1)}, 500);
     }
     var pos = new Array();
     console.log(possibility.length);
@@ -187,12 +222,87 @@ function cpchallenge() {
 }
 
 function cpUseItem() {
-    cphighlow();
-    if (possibility.length<10) {
-        cpdouble();
-    } else if (yourpossibility.length<15) {
+    if (item_random == false) {
+        cphighlow();
+    } else {
+        console.log("item_random")
+        if (possibility.length<10 || yourpossibility.length<5) {
+            console.log("DOUBLE")
+            cpdouble();
+            youritem = false;
+        } else if (yourpossibility.length<15) {
+            console.log("DEFEND")
+            var item_rand = Math.random();
+            if (item_rand >= 0.5) {
+                cpshuffle();
+            } else {
+                cpchange(Math.floor(item_rand*2*length));
+            }
+            youritem = false;
+        } else if (Math.random() < 0.2) {
+            console.log("ATTACK")
+            var information_record = 0;
+            var information_max_index = 0;
+            // slash
+            var slash_p = Array(numbering);
+            slash_p.fill(0);
+            for (var i=0; i<possibility.length; i++) {
+                slash_p[Math.max.apply(null, possibility[i]) - Math.min.apply(null, possibility[i])]++;
+            }
+            var expection_slash = 0;
+            for (var i=0; i<length; i++) {
+                expection_slash += slash_p[i]*slash_p[i];
+            }
+            // highlow
+            var highlow_p = Array(2**length);
+            highlow_p.fill(0);
+            for (var i=0; i<possibility.length; i++) {
+                var highlow_p_index = 0;
+                for (var j=0; j<length; j++) {
+                    if (possibility[i][j] >= numbering/2) {
+                        highlow_p_index += 2**j
+                    }
+                }
+                highlow_p[highlow_p_index]++;
+            }
+            var expection_highlow = 0;
+            for (var i=0; i<2**length; i++) {
+                expection_highlow += highlow_p[i]*highlow_p[i];
+            }
+            // target
+            var target_p = Array(numbering);
+            for (var i=0; i<numbering; i++) {
+                target_p[i] = Array(length);
+                target_p[i].fill(0);
+            }
+            for (var i=0; i<possibility.length; i++) {
+                for (var j=0; j<length; j++) {
+                    target_p[possibility[i][j]][j]++;
+                }
+            }
+            var expection_target = Array(numbering);
+            expection_target.fill(0);
+            for (var i=0; i<numbering; i++) {
+                var target_pi_sum = 0;
+                for (var j=0; j<length; j++) {
+                    expection_target[i] += target_p[i][j]*target_p[i][j];
+                    target_pi_sum += target_p[i][j];
+                }
+                expection_target[i] += (possibility.length - target_pi_sum) ** 2;
+            }
+
+            var expection_target_min = Math.min.apply(null, expection_target)
+            
+            if (expection_highlow < expection_slash && expection_highlow < expection_target_min) {
+                cphighlow();
+            } else if (expection_slash < expection_target_min) {
+                cpslash();
+            } else {
+                cptarget(expection_target.indexOf(expection_target_min));
+            }
+            youritem = false;
+        }
     }
-    youritem = false;
 }
 
 function cpdouble() { //yourpossibilityの更新は不要のためしていない
@@ -261,11 +371,14 @@ function cpslash() {
     var l = document.getElementById("yourlog");
     var s = Math.max.apply(null, mine)-Math.min.apply(null, mine);
     l.innerHTML += "<p>slash "+s+"</p>";
+    var pos = new Array();
     for (var i=0; i<possibility.length; i++) {
-        if (Math.max.apply(null, possibility[i])-Math.min.apply(null, possibility[i]) != s) {
-            possibility.splice(i, 1);
+        if (Math.max.apply(null, possibility[i])-Math.min.apply(null, possibility[i]) == s) {
+            pos.push(possibility[i])
         }
     }
+    console.log(pos.length)
+    possibility = pos.concat()
 }
 
 function cptarget(n) {
@@ -275,23 +388,29 @@ function cptarget(n) {
             l.innerHTML += "<p>target "+n+" あり "+i+"桁目</p>";
             var c = document.getElementsByClassName("mine");
             c[i].className = "card mine shown";
+            var pos = new Array();
             for (var j=0; j<possibility.length; j++) {
-                if (possibility[j][i] != n) {
-                    possibility.splice(j, 1);
+                if (possibility[j][i] == n) {
+                    pos.push(possibility[j])
                 }
             }
+            console.log(pos.length);
+            possibility = pos.concat();
             return;
         }
     }
     l.innerHTML += "<p>target "+n+" なし";
+    var pos = new Array();
     for (var i=0; i<possibility.length; i++) {
         for (var j=0; j<length; j++) {
             if (possibility[i][j] == n) {
-                possibility.splice(i, 1);
                 break;
             }
         }
+        pos.push(possibility[i]);
     }
+    console.log(pos.length);
+    possibility = pos.concat();
 }
 
 function cpshuffle() { //cp完了。見た目の更新やる。
@@ -624,7 +743,7 @@ function endItem() { //itemの使用を終えた瞬間
     initComment();
 }
 
-function finish(n) {
+var finish = function(n) {
     if (n==0) {
         alert("あなたの勝ちです。");
         game = false;

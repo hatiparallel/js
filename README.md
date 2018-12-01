@@ -1,2 +1,2 @@
-# studying
-for my studying
+# practice
+for my practice
