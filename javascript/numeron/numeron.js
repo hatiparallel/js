@@ -491,11 +491,20 @@ function cpchange(c) {
 }
 
 function double() {
+    /*
     for (var i=0; i<possibility.length; i++) {
         if (possibility[i][item[2]] != mine[item[2]]) {
             possibility.splice(i, 1);
         }
+    }*/
+    var pos = new Array();
+    for (var i=0; i<possibility.length; i++) {
+        if (possibility[i][item[2]] == mine[item[2]]) {
+            pos.push(possibility[i])
+        }
     }
+    console.log(pos.length);
+    possibility = pos.concat();
     comment.innerHTML = "double使用中です。";
     var l = document.getElementById("mylog");
     l.innerHTML += "<p>doubleを使用しました。";
